@@ -1,30 +1,37 @@
-let TODOS = [
-  {
-    id: 1,
-    content: "Buy groceries",
-    completed: false,
-  },
-  {
-    id: 2,
-    content: "Buy car",
-    completed: true,
-  },
-  {
-    id: 3,
-    content: "Buy house",
-    completed: false,
-  },
-  {
-    id: 4,
-    content: "Buy clock",
-    completed: false,
-  },
-];
+let TODOS = [];
 
 const todoInput = document.getElementById("todo-input");
 const todoButton = document.getElementById("todo-button");
 const todoList = document.getElementById("todo-list");
 const todoCount = document.getElementById("todo-count");
+
+const API_URL = "https://681a0d831ac1155635079c25.mockapi.io/todos";
+
+async function getTodos() {
+  const response = await fetch(API_URL);
+  const todos = await response.json();
+
+  if (todos) {
+    TODOS = todos;
+  }
+  return TODOS;
+}
+
+async function removeTodo(id) {
+  const response = await fetch(`${API_URL}/${id}`, {
+    method: "DELETE",
+  });
+
+  if (response.ok) {
+    TODOS = TODOS.filter((todo) => todo.id !== id);
+    setTodos(TODOS);
+  }
+}
+
+function setTodos(todos) {
+  TODOS = todos;
+  sessionStorage.setItem("todos", JSON.stringify(todos));
+}
 
 function renderTodo(todo) {
   const todoItem = document.createElement("li");
@@ -46,7 +53,9 @@ function renderTodo(todo) {
       <input type="checkbox" ${
         todo.completed ? "checked" : ""
       } class="h-5 w-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-      <span class="ml-3 flex-1 text-gray-800">${todo.content}</span>
+      <div class="ml-3 flex-1 text-gray-800" contenteditable="true">${
+        todo.content
+      }</div>
       <button class="text-gray-400 hover:text-red-500 transition-colors duration-200">
         <i class="fas fa-trash"></i>
       </button>
@@ -66,7 +75,7 @@ function renderTodoList(todos) {
   todoCount.innerHTML = `${activeTodos.length} items left`;
 }
 
-function addTodo() {
+async function addTodo() {
   if (todoInput.value === "") return;
 
   const todo = {
@@ -75,9 +84,35 @@ function addTodo() {
     completed: false,
   };
 
-  TODOS.push(todo);
-  renderTodoList(TODOS);
-  todoInput.value = "";
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(todo),
+  });
+
+  if (response.ok) {
+    TODOS.push(todo);
+    setTodos(TODOS);
+    renderTodoList(TODOS);
+    todoInput.value = "";
+  }
+}
+
+async function updateTodo(id, newTodo) {
+  const response = await fetch(`${API_URL}/${id}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(newTodo),
+  });
+
+  if (response.ok) {
+    TODOS = TODOS.map((todo) => {
+      if (todo.id === id) {
+        return newTodo;
+      }
+      return todo;
+    });
+  }
 }
 
 todoInput.addEventListener("keyup", (e) => {
@@ -102,25 +137,27 @@ todoList.addEventListener("click", (e) => {
   if (e.target.tagName === "I") {
     const todoId = e.target.parentElement.parentElement.getAttribute("data-id");
 
-    TODOS = TODOS.filter((todo) => todo.id !== Number(todoId));
+    const filteredTodos = TODOS.filter((todo) => todo.id !== Number(todoId));
 
-    renderTodoList(TODOS);
+    removeTodo(todoId);
+
+    renderTodoList(filteredTodos);
   }
 });
 
-todoList.addEventListener("change", (e) => {
+todoList.addEventListener("change", async (e) => {
   if (e.target.tagName === "INPUT") {
     const todoId = e.target.parentElement.getAttribute("data-id");
 
-    TODOS = TODOS.map((todo) => {
-      if (todo.id === Number(todoId)) {
-        todo.completed = e.target.checked;
-      }
-      return todo;
+    await updateTodo(todoId, {
+      completed: e.target.checked,
+      content: e.target.parentElement.innerText,
     });
 
     renderTodoList(TODOS);
   }
 });
 
-renderTodoList(TODOS);
+getTodos().then(() => {
+  renderTodoList(TODOS);
+});
