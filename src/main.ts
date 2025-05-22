@@ -1,6 +1,12 @@
-let TODOS = [];
+interface Todo {
+  id?: number;
+  content: string;
+  completed: boolean;
+}
 
-const todoInput = document.getElementById("todo-input");
+let TODOS: Todo[] = [];
+
+const todoInput = document.getElementById("todo-input") as HTMLInputElement;
 const todoButton = document.getElementById("todo-button");
 const todoList = document.getElementById("todo-list");
 const todoCount = document.getElementById("todo-count");
@@ -17,7 +23,7 @@ async function getTodos() {
   return TODOS;
 }
 
-async function removeTodo(id) {
+async function removeTodo(id: number) {
   const response = await fetch(`${API_URL}/${id}`, {
     method: "DELETE",
   });
@@ -28,15 +34,15 @@ async function removeTodo(id) {
   }
 }
 
-function setTodos(todos) {
+function setTodos(todos: Todo[]) {
   TODOS = todos;
   sessionStorage.setItem("todos", JSON.stringify(todos));
 }
 
-function renderTodo(todo) {
+function renderTodo(todo: Todo) {
   const todoItem = document.createElement("li");
 
-  todoItem.setAttribute("data-id", todo.id);
+  todoItem.setAttribute("data-id", todo.id!.toString());
 
   todoItem.classList.add(
     "flex",
@@ -61,26 +67,26 @@ function renderTodo(todo) {
       </button>
     `;
 
-  todoList.appendChild(todoItem);
+  todoList?.appendChild(todoItem);
 }
 
-function renderTodoList(todos) {
-  todoList.innerHTML = "";
+function renderTodoList(todos: Todo[]) {
+  todoList!.innerHTML = "";
   todos.forEach((todo) => {
     renderTodo(todo);
   });
 
   const activeTodos = todos.filter((todo) => !todo.completed);
 
-  todoCount.innerHTML = `${activeTodos.length} items left`;
+  todoCount!.innerHTML = `${activeTodos.length} items left`;
 }
 
 async function addTodo() {
-  if (todoInput.value === "") return;
+  if (todoInput!.value === "") return;
 
   const todo = {
     id: TODOS.length + 1,
-    content: todoInput.value,
+    content: todoInput!.value,
     completed: false,
   };
 
@@ -98,7 +104,7 @@ async function addTodo() {
   }
 }
 
-async function updateTodo(id, newTodo) {
+async function updateTodo(id: number, newTodo: Todo) {
   const response = await fetch(`${API_URL}/${id}`, {
     method: "PUT",
     headers: { "content-type": "application/json" },
@@ -116,10 +122,10 @@ async function updateTodo(id, newTodo) {
 }
 
 todoInput.addEventListener("keyup", (e) => {
-  if (e.target.value === "") {
-    todoButton.setAttribute("disabled", "true");
+  if ((e.target as HTMLInputElement).value === "") {
+    todoButton!.setAttribute("disabled", "true");
   } else {
-    todoButton.removeAttribute("disabled");
+    todoButton!.removeAttribute("disabled");
   }
 });
 
@@ -129,35 +135,43 @@ todoInput.addEventListener("keypress", (e) => {
   }
 });
 
-todoButton.addEventListener("click", () => {
+todoButton!.addEventListener("click", () => {
   addTodo();
 });
 
-todoList.addEventListener("click", (e) => {
-  if (e.target.tagName === "I") {
-    const todoId = e.target.parentElement.parentElement.getAttribute("data-id");
+todoList!.addEventListener("click", (e) => {
+  if ((e.target as HTMLElement).tagName === "I") {
+    const todoId = (
+      e.target as HTMLElement
+    ).parentElement!.parentElement!.getAttribute("data-id");
 
     const filteredTodos = TODOS.filter((todo) => todo.id !== Number(todoId));
 
-    removeTodo(todoId);
-
-    renderTodoList(filteredTodos);
+    if (todoId) {
+      removeTodo(Number(todoId));
+      renderTodoList(filteredTodos);
+    }
   }
 });
 
-todoList.addEventListener("change", async (e) => {
-  if (e.target.tagName === "INPUT") {
-    const todoId = e.target.parentElement.getAttribute("data-id");
+todoList!.addEventListener("change", async (e) => {
+  if ((e.target as HTMLInputElement).tagName === "INPUT") {
+    const todoId = (e.target as HTMLInputElement).parentElement!.getAttribute(
+      "data-id"
+    );
+    if (todoId) {
+      await updateTodo(Number(todoId), {
+        completed: (e.target as HTMLInputElement).checked,
+        content: (e.target as HTMLInputElement).parentElement!.innerText,
+      });
 
-    await updateTodo(todoId, {
-      completed: e.target.checked,
-      content: e.target.parentElement.innerText,
-    });
-
-    renderTodoList(TODOS);
+      renderTodoList(TODOS);
+    }
   }
 });
 
 getTodos().then(() => {
   renderTodoList(TODOS);
 });
+
+// Browser: HTMl, CSS, JS
